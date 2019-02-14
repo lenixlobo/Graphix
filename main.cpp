@@ -136,7 +136,7 @@ int main()
 		1 , 2 , 3	//second trianfle
 	};
 	
-	unsigned int VBO, VAO,TexID,EBO;
+	unsigned int VBO, VAO,TexID,TexID2,EBO;
 	glGenTextures(1,&TexID);
 	glBindTexture(GL_TEXTURE_2D,TexID);
 	//set texture wrapping options on the currently bound texture object
@@ -156,6 +156,30 @@ int main()
 	}
 	stbi_image_free(data);
 	
+
+	//Texture 2 Loading
+	glGenTextures(1,&TexID2);
+	glBindTexture(GL_TEXTURE_2D,TexID2);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	data = (char*)load_texture("textures/face.png");
+
+	if (data) {
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texwidth,texheight,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else {
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+
+	//always use shader first before passing uniforms
+	ourshader.setInt("ourTexture",0);
+	ourshader.setInt("Texture2",1);
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -187,7 +211,12 @@ int main()
 
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glBindTexture(GL_TEXTURE_2D, TexID);
+		//glBindTexture(GL_TEXTURE_2D, TexID);
+		
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D,TexID);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D,TexID2);
 		ourshader.use();
 
 		//float timeVal = glfwGetTime();
