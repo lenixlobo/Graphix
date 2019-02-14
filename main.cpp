@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include<glad\glad.h>
 #include<GLFW\glfw3.h>
 #include<string>
@@ -6,6 +8,15 @@
 #include<sstream>
 #include<cmath>
 #include "Shader.h"
+#include <stb_image.h>
+
+int texwidth, texheight;
+unsigned char* load_texture(const char* filename)
+{
+	int  nrChannels;
+	unsigned char *imgdata = stbi_load(filename, &texwidth, &texheight, &nrChannels, 0);
+	return imgdata;
+}
 
 std::string vertexShader;
 std::string fragmentShader;
@@ -114,29 +125,59 @@ int main()
 
 	float vertices[] = {
 		//positions				//colors				//texture coords
-		-0.5f ,-0.5f , 0.0f ,	 1.0f , 0.0f , 0.0f ,		1.0f , 1.0f,
+		0.5f ,0.5f , 0.0f ,	 1.0f , 0.0f , 0.0f ,		1.0f , 1.0f,
 		 0.5f ,-0.5f , 0.0f ,	 0.0f , 1.0f , 0.0f ,	    1.0f , 0.0f,
-		 0.0f , 0.5f , 0.0f ,	 0.0f , 0.0f , 1.0f ,		0.0f , 0.0f,
+		 -0.5f , -0.5f , 0.0f ,	 0.0f , 0.0f , 1.0f ,		0.0f , 0.0f,
 		-0.5f , 0.5f , 0.0f ,	 1.0f , 1.0f , 0.0f ,		0.0f , 1.0f 
 	};
-	unsigned int VBO, VAO;
+	
+	unsigned int indices[] = {
+		0 , 1 , 3,	//first triangnle
+		1 , 2 , 3	//second trianfle
+	};
+	
+	unsigned int VBO, VAO,TexID,EBO;
+	glGenTextures(1,&TexID);
+	glBindTexture(GL_TEXTURE_2D,TexID);
+	//set texture wrapping options on the currently bound texture object
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+
+	char *data = (char*)load_texture("textures/container.jpg");
+
+	if (data) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texwidth, texheight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else {
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+	
+
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
+	glGenBuffers(1,&EBO);
+
 	//bind vertex object
 	glBindVertexArray(VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER,VBO);
 	glBufferData(GL_ARRAY_BUFFER,sizeof(vertices),vertices,GL_STATIC_DRAW);
 
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(indices),indices,GL_STATIC_DRAW);
 	//create generic vertex attribute  data
-	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,6*sizeof(float),(void*)0);
+	glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,8*sizeof(float),(void*)0);
 	glEnableVertexAttribArray(0);
-	//create attrivute pointer for colour data with offset of 12
-	glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,6*sizeof(float),(void*)(3*sizeof(float)));
+	//create attrivute pointer for colour data with offset of 12 
+	glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,8*sizeof(float),(void*)(3*sizeof(float)));
 	glEnableVertexAttribArray(1);
-	//texture loading
-	
-
+	//texture loading with an offset of 24
+	glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,8*sizeof(float),(void*)(6*sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -146,7 +187,7 @@ int main()
 
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-
+		glBindTexture(GL_TEXTURE_2D, TexID);
 		ourshader.use();
 
 		//float timeVal = glfwGetTime();
@@ -154,14 +195,18 @@ int main()
 		//float cosvalue = cos(timeVal)-0.2;
 		//int vertexColorLocation = glGetUniformLocation(shaderProgramID,"ourColor");
 		//glUniform4f(vertexColorLocation,sinvalue,0.0f,cosvalue,1.0f);
-
+		
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES,0,3);
+		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
+		//glDrawArrays(GL_TRIANGLES,0,3);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-
+	glDeleteVertexArrays(1,&VAO);
+	glDeleteBuffers(1,&VBO);
+	glDeleteBuffers(1,&EBO);
+	glfwTerminate();
 	return 0;
 }
 
