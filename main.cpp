@@ -10,6 +10,10 @@
 #include "Shader.h"
 #include <stb_image.h>
 
+#include <glm\glm\glm.hpp>
+#include <glm\glm\gtc\matrix_transform.hpp>
+#include<glm\glm\gtc\type_ptr.hpp>
+
 int texwidth, texheight;
 unsigned char* load_texture(const char* filename)
 {
@@ -72,56 +76,6 @@ int main()
 	}
 
 	Shader ourshader("shaders/shader.vs","shaders/fragment.vs");
-/*
-	//create shaders
-	read_shaders("shaders/shader.vs","shaders/fragment.vs");
-	const char* vertshader = vertexShader.c_str();
-	const char* fragshader = fragmentShader.c_str();
-	int success;
-	char infolog[512];
-	int vertexshadID = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexshadID,1,&vertshader,NULL);
-	glCompileShader(vertexshadID);
-	glGetShaderiv(vertexshadID,GL_COMPILE_STATUS,&success);
-	if (!success) {
-		glGetShaderInfoLog(vertexshadID,512,NULL,infolog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION::FAILED \n" << infolog << std::endl;
-	}
-	int fragmentshadID = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentshadID, 1, &fragshader, NULL);
-	glCompileShader(fragmentshadID);
-	glGetShaderiv(fragmentshadID, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		glGetShaderInfoLog(fragmentshadID, 512, NULL, infolog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION::FAILED \n" << infolog << std::endl;
-	}
-
-	//create a program to link shaders to
-	int shaderProgramID = glCreateProgram();
-	glAttachShader(shaderProgramID,vertexshadID);
-	glAttachShader(shaderProgramID, fragmentshadID);
-	glLinkProgram(shaderProgramID);
-	glGetProgramiv(shaderProgramID,GL_LINK_STATUS,&success);
-	if (!success) {
-		glGetProgramInfoLog(shaderProgramID,512,NULL,infolog);
-		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED \n"<<infolog << std::endl;
-	}
-	glDeleteShader(vertexshadID);
-	glDeleteShader(fragmentshadID);
-	/*
-	float vertices[] = {
-	-0.5f , -0.5f , 0.0f,
-	0.5f , -0.5f , 0.0f,
-	0.0f , 0.5f , 0.0f
-	};*/
-	
-	/*
-	float vertices[] = {
-		-0.5f , -0.5f , 0.0f , 1.0f , 0.0f , 0.0f,
-		0.5f , -0.5f , 0.0f , 0.0f , 1.0f , 0.0f, 
-		0.0f , 0.5f , 0.0f , 0.0f , 0.0f , 1.0f
-	};
-	*/
 
 	float vertices[] = {
 		//positions				//colors				//texture coords
@@ -135,8 +89,10 @@ int main()
 		0 , 1 , 3,	//first triangnle
 		1 , 2 , 3	//second trianfle
 	};
+
 	
-	unsigned int VBO, VAO,TexID,TexID2,EBO;
+	
+	unsigned int VBO, VAO,TexID,EBO;
 	glGenTextures(1,&TexID);
 	glBindTexture(GL_TEXTURE_2D,TexID);
 	//set texture wrapping options on the currently bound texture object
@@ -156,30 +112,9 @@ int main()
 	}
 	stbi_image_free(data);
 	
-
-	//Texture 2 Loading
-	glGenTextures(1,&TexID2);
-	glBindTexture(GL_TEXTURE_2D,TexID2);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	data = (char*)load_texture("textures/face.png");
-
-	if (data) {
-		glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,texwidth,texheight,0,GL_RGB,GL_UNSIGNED_BYTE,data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else {
-		std::cout << "Failed to load texture" << std::endl;
-	}
-	stbi_image_free(data);
-
+	
 	//always use shader first before passing uniforms
 	ourshader.setInt("ourTexture",0);
-	ourshader.setInt("Texture2",1);
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -211,20 +146,26 @@ int main()
 
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		//glBindTexture(GL_TEXTURE_2D, TexID);
-		
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D,TexID);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D,TexID2);
+
+		//create 3d model
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 projection = glm::mat4(1.0f);
+
+		model = glm::rotate(model,glm::radians(-55.0f),glm::vec3(1.0f,0.0f,0.0f));
+		view = glm::translate(view,glm::vec3(0.0f,0.0f,-3.0f));
+		projection = glm::perspective(glm::radians(45.0f) , (float)scr_width/(float)scr_height , 0.1f,100.0f);
+
 		ourshader.use();
 
-		//float timeVal = glfwGetTime();
-		//float sinvalue = sin(timeVal)+0.2;
-		//float cosvalue = cos(timeVal)-0.2;
-		//int vertexColorLocation = glGetUniformLocation(shaderProgramID,"ourColor");
-		//glUniform4f(vertexColorLocation,sinvalue,0.0f,cosvalue,1.0f);
-		
+		//send uniform model and view coords
+		unsigned int modelLoc = glGetUniformLocation(ourshader.ID,"model");
+		unsigned int viewLoc = glGetUniformLocation(ourshader.ID,"view");
+		//three ways to pass args
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniformMatrix4fv(viewLoc , 1, GL_FALSE, &view[0][0]);
+		ourshader.setMat4("projection",projection);
+
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		//glDrawArrays(GL_TRIANGLES,0,3);
