@@ -25,6 +25,11 @@ unsigned char* load_texture(const char* filename)
 std::string vertexShader;
 std::string fragmentShader;
 
+
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
 void processInput(GLFWwindow *window);
 void framebuffer_size_callback(GLFWwindow *window,int width,int height);
 void read_shaders(const char* filevertex,const char* filefragment);
@@ -193,11 +198,13 @@ int main()
 		//create 3d model
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view;
-		float radius = 10.0f;
-		float camX = sin(glfwGetTime())*radius;
-		float camZ = cos(glfwGetTime())*radius;
+		//float radius = 10.0f;
+		//float camX = sin(glfwGetTime())*radius;
+		//float camZ = cos(glfwGetTime())*radius;
 
-		view = glm::lookAt(glm::vec3(camX,0,camZ),glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,1.0f,0.0f));
+		view = glm::lookAt(cameraPos,cameraPos+cameraFront,cameraUp);
+
+		//view = glm::lookAt(glm::vec3(camX,0,camZ),glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,1.0f,0.0f));
 		glm::mat4 projection = glm::mat4(1.0f);
 
 		model = glm::rotate(model , (float)glfwGetTime() , glm::vec3(0.5f,1.0f,0.0f));
@@ -242,7 +249,21 @@ void framebuffer_size_callback(GLFWwindow* window,int width, int height) {
 }
 
 void processInput(GLFWwindow *window) {
+	float cameraSpeed=0.10f;
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window,true);
+	}
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		cameraPos += cameraSpeed * cameraFront;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+
+		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp))*cameraSpeed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		cameraPos -= cameraSpeed * cameraFront;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+		cameraPos += glm::normalize(glm::cross(cameraFront,cameraUp))*cameraSpeed;
 	}
 }
