@@ -8,6 +8,7 @@
 #include<sstream>
 #include<cmath>
 #include "Shader.h"
+#include"Camera.h"
 #include <stb_image.h>
 
 #include <glm\glm\glm.hpp>
@@ -22,40 +23,28 @@ unsigned char* load_texture(const char* filename)
 	return imgdata;
 }
 
+
 std::string vertexShader;
 std::string fragmentShader;
 
-
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
+//handler functions
 void processInput(GLFWwindow *window);
 void framebuffer_size_callback(GLFWwindow *window,int width,int height);
-void read_shaders(const char* filevertex,const char* filefragment);
+
+void mouse_callback(GLFWwindow* window,double xpos, double ypos);
+void scroll_callback(GLFWwindow* window,double xoffset,double yoffset);
+
 const unsigned int scr_width = 800;
 const unsigned int scr_height = 600;
 
-void read_shaders(const char* filevertex, const char* filefragment) {
-	std::ifstream vertexfile(filevertex);
-	std::ifstream fragmentfile(filefragment);
+bool firstMouse = true;
+//Camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = scr_width / 2.0f;
+float lastY = scr_height / 2.0f;
 
-	if (vertexfile.fail()) {
-		std::cout << "Failed to load vertx shader \n" << std::endl;
-	}
-	if (fragmentfile.fail()) {
-		std::cout << "Failed to load fragment shader \n" << std::endl;
-	}
-
-	std::string linevertex;
-	std::string linefrag;
-	while (std::getline(vertexfile, linevertex)) {
-		vertexShader += linevertex + "\n";
-	}
-	while (std::getline(fragmentfile, linefrag)) {
-		fragmentShader += linefrag + "\n";
-	}
-}
+float deltaTime = 0.0f;
+float last_frame = 0.0f;
 
 int main()
 {
@@ -73,12 +62,16 @@ int main()
 
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window,framebuffer_size_callback);
+	glfwSetCursorPosCallback(window,mouse_callback);
+	glfwSetScrollCallback(window,scroll_callback);
 
 	//check if glad initiated
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		std::cout << "Failed to initialized GLAD" << std::endl;
 		return - 1;
 	}
+	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_DISABLED);
+	glEnable(GL_DEPTH_TEST);
 
 	Shader ourshader("shaders/shader.vs","shaders/fragment.vs");
 
@@ -190,39 +183,23 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 	while (!glfwWindowShouldClose(window)) {
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - last_frame;
+		last_frame = currentFrame;
+
 		processInput(window);
 
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-		//create 3d model
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 view;
-		//float radius = 10.0f;
-		//float camX = sin(glfwGetTime())*radius;
-		//float camZ = cos(glfwGetTime())*radius;
-
-		view = glm::lookAt(cameraPos,cameraPos+cameraFront,cameraUp);
-
-		//view = glm::lookAt(glm::vec3(camX,0,camZ),glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,1.0f,0.0f));
-		glm::mat4 projection = glm::mat4(1.0f);
-
-		model = glm::rotate(model , (float)glfwGetTime() , glm::vec3(0.5f,1.0f,0.0f));
-		//view = glm::translate(view,glm::vec3(0.0f,0.0f,-3.0f));
-		projection = glm::perspective(glm::radians(45.0f) , (float)scr_width/(float)scr_height , 0.1f,100.0f);
-
+		//set projection matrix
 		ourshader.use();
-
-		//send uniform model and view coords
-		unsigned int modelLoc = glGetUniformLocation(ourshader.ID,"model");
-		unsigned int viewLoc = glGetUniformLocation(ourshader.ID,"view");
-		//three ways to pass args
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		
-
-		glUniformMatrix4fv(viewLoc , 1, GL_FALSE, &view[0][0]);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.zoom),(float)scr_width/(float)scr_height,0.1f,100.0f);
 		ourshader.setMat4("projection",projection);
+		//set view matric
+		glm::mat4 view = camera.get_view_matrix();
+		ourshader.setMat4("view",view);
+
 
 		glBindVertexArray(VAO);
 		//glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
@@ -253,17 +230,25 @@ void processInput(GLFWwindow *window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window,true);
 	}
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		cameraPos += cameraSpeed * cameraFront;
-	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+}
 
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp))*cameraSpeed;
+//mouse  callback
+void mouse_callback(GLFWwindow *window,double xpos,double ypos) {
+	if (firstMouse) {
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
 	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		cameraPos -= cameraSpeed * cameraFront;
-	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		cameraPos += glm::normalize(glm::cross(cameraFront,cameraUp))*cameraSpeed;
-	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;//IMP: reversed cause y coords vary from bottom to top
+
+	lastX = xpos;
+	lastY = ypos;
+
+	camera.ProcessMouseMovement(xoffset,yoffset);
+}
+//scroll callback
+void scroll_callback(GLFWwindow *window,double xoffset,double yoffset) {
+	camera.process_mouse_scroll(yoffset);
 }
