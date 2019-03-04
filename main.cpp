@@ -170,6 +170,7 @@ int main()
 		ourshader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
 		ourshader.setVec3("lightColor",1.0f,1.0f,1.0f);
 		ourshader.setVec3("lightPos", lightPos);
+		ourshader.setVec3("viewPos",camera.Position);
 
 		//set projection matrix
 		ourshader.use();
