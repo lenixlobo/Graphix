@@ -66,7 +66,8 @@ int main()
 	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_DISABLED);
 	glEnable(GL_DEPTH_TEST);
 
-	Shader ourshader("shaders/shader.vs","shaders/fragment.vs");
+	//Shader ourshader("shaders/shader.vs","shaders/fragment.vs");
+	Shader materialShader("shaders/material.vs","shaders/material.fs");
 	Shader lampShader("shaders/lamp.vs","shaders/lamp.fs");
 
 	float vertices[] = {
@@ -166,19 +167,34 @@ int main()
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-		ourshader.use();
-		ourshader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-		ourshader.setVec3("lightColor",1.0f,1.0f,1.0f);
-		ourshader.setVec3("lightPos", lightPos);
-		ourshader.setVec3("viewPos",camera.Position);
+		materialShader.use();
+		materialShader.setVec3("lit.position",lightPos);
+		materialShader.setVec3("viewPos",camera.Position);
 
-		//set projection matrix
-		ourshader.use();
+		//light properties
+		glm::vec3 lightColor;
+		lightColor.x = sin(glfwGetTime()*0.9f);
+		lightColor.y = sin(glfwGetTime()*0.3f);
+		lightColor.z = sin(glfwGetTime()*1.5f);
+		glm::vec3 diffuseColor = lightColor * glm::vec3(0.8);
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.4);
+		materialShader.setVec3("lit.ambient",ambientColor);
+		materialShader.setVec3("lit.diffuse",diffuseColor);
+		materialShader.setVec3("lit.specular",1.0f,1.0f,1.0f);
+
+		//material properties
+		materialShader.setVec3("mater.ambient",1.0f,0.5f,0.31f);
+		materialShader.setVec3("mater.diffuse", 1.0f, 0.5f, 0.31f);
+		materialShader.setVec3("mater.specular", 0.5f, 0.5f, 0.5f);
+		materialShader.setFloat("mater.shininess",32.0f);
+
+
+
 		glm::mat4 projection = glm::perspective(glm::radians(camera.zoom),(float)scr_width/(float)scr_height,0.1f,100.0f);
-		ourshader.setMat4("projection",projection);
+		materialShader.setMat4("projection",projection);
 		//set view matric
 		glm::mat4 view = camera.get_view_matrix();
-		ourshader.setMat4("view",view);
+		materialShader.setMat4("view",view);
 
 		glm::mat4 model = glm::mat4(1.0f);
 		lampShader.setMat4("model",model);
@@ -189,7 +205,7 @@ int main()
 			
 			model = glm::translate(model,cubePositions[i]);
 			
-			ourshader.setMat4("model",model);
+			materialShader.setMat4("model",model);
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 
